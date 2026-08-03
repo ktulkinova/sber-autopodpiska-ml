@@ -1,5 +1,5 @@
 
-# SberAutopodpiska — Lead Conversion Prediction
+# SberCarSubscription — Lead Conversion Prediction
 
 Predicting whether a website visitor will submit a car subscription request, based on a single session. The goal: help the business identify high-intent traffic and allocate ad budget more effectively.
 
