@@ -1,73 +1,71 @@
-#  Предсказание заявки на сайте «СберАвтоподписка»
 
-Модель предсказывает, оставит ли пользователь заявку на аренду авто, по данным одного визита на сайт. Цель — помочь бизнесу понимать, какой трафик «горячий», и эффективнее распределять рекламный бюджет.
+# SberAutopodpiska — Lead Conversion Prediction
 
-**Результат: ROC-AUC 0.704** (целевой уровень заказчика — 0.65, перевыполнен).
+Predicting whether a website visitor will submit a car subscription request, based on a single session. The goal: help the business identify high-intent traffic and allocate ad budget more effectively.
 
-> Финальный проект курса по Data Science. Реальная задача от партнёра — сервиса долгосрочной аренды авто «СберАвтоподписка». Данные (`ga_sessions.pkl`, `ga_hits.pkl`) не загружены в репозиторий из-за размера.
-> Датасет: [Google Drive](https://drive.google.com/drive/folders/1rA4o6KHH-M2KMvBLHp5DZ5gioF2q7hZw)
+**Result: ROC-AUC 0.704** — the client's target was 0.65.
 
----
-
-##  Что влияет на конверсию
-<img width="763" height="547" alt="output" src="https://github.com/user-attachments/assets/656f3774-051c-4e84-acb6-13fe8398290a" />
-
-Сильнее всего на вероятность заявки влияет **источник трафика** (рекламная кампания и канал). Отдельный вывод: органический трафик конвертит почти вдвое лучше платного (~4% против ~2.2%) — есть смысл вкладываться в него, а не только в рекламу.
+Capstone project for a Data Science course. Real-world task from SberAutopodpiska, a long-term car subscription service.
 
 ---
 
-##  Стек
+## Problem
 
-`Python` · `pandas` · `scikit-learn` · `CatBoost` · `matplotlib` · `seaborn`
+Highly imbalanced data: conversion rate is only ~2.7%, class ratio ~36:1. ROC-AUC was chosen as the primary metric instead of accuracy, which would be meaningless at this imbalance.
 
----
+## Data
 
-##  Ход работы и результаты
+Google Analytics exports: `ga_sessions.pkl` (sessions) and `ga_hits.pkl` (events).
 
-Данные несбалансированные — конверсия всего ~2.7%, соотношение классов ~36:1. Поэтому основная метрика — ROC-AUC, а не accuracy.
+Not included in the repository due to size (hundreds of MB) — [download the dataset here](LINK).
 
-Шла от простого к сложному, с честным сравнением:
+## Approach
 
-| Модель | Признаки | ROC-AUC |
-|---|---|:---:|
-| Логистическая регрессия (бейзлайн) | базовые | 0.604 |
-| CatBoost | базовые | 0.643 |
-| **CatBoost** | **+ источники и гео** | **0.704** |
+I worked from simple to complex, comparing each step honestly:
 
-Ключевое наблюдение: добавление сильных фич (география, источники) дало больший прирост, чем смена модели — данные важнее алгоритма.
+| Model | Features | ROC-AUC |
+|---|---|---|
+| Logistic Regression (baseline) | base | 0.604 |
+| CatBoost | base | 0.643 |
+| CatBoost | + traffic source and geo | **0.704** |
 
----
+**Key takeaway:** adding strong features (geography, traffic source) improved the score more than switching models. Data mattered more than the algorithm.
 
-##  Структура проекта
+## What drives conversion
 
-| Файл | Что внутри |
+Traffic source — the ad campaign and channel — is the strongest predictor.
+
+A notable finding: organic traffic converts nearly twice as well as paid (~4% vs ~2.2%), suggesting the business should invest in organic acquisition rather than ads alone.
+
+![Feature importance](feature_importance.png)
+
+## Pipeline
+
+1. **Cleaning** — dropped empty and irrelevant columns; found hidden missing values (`(not set)` stored as a string rather than null); converted dates to proper types.
+2. **Target construction** — built the label from the events table: a session counts as `1` if it contains at least one target action from the business glossary.
+3. **EDA** — feature distributions, conversion rates by device and channel.
+4. **Feature engineering** — created `is_organic` to separate organic from paid traffic.
+5. **Modeling** — trained and compared models, analyzed feature importance.
+6. **Deployment** — packaged the final model as a prediction service.
+
+## Stack
+
+Python · pandas · scikit-learn · CatBoost · matplotlib · seaborn
+
+## Repository structure
+
+| File | Contents |
 |---|---|
-| `ml.ipynb` | основной ноутбук: чистка данных, EDA, обучение модели, выводы |
-| `predict.py` | сервис: принимает данные визита → выдаёт 0 / 1 |
-| `catboost_model.cbm` | обученная модель |
-| `feature_importance.png` | график важности признаков |
+| `ml.ipynb` | Main notebook: cleaning, EDA, training, conclusions |
+| `predict.py` | Prediction service: takes session data → returns 0 / 1 |
+| `catboost_model.cbm` | Trained model |
+| `feature_importance.png` | Feature importance plot |
 
-Данные (`ga_sessions.pkl`, `ga_hits.pkl`) в репозиторий не загружены из-за размера (сотни МБ).
-📎 **Датасет:** [ссылка на Google Drive](ВСТАВЬ_ССЫЛКУ_СЮДА)
-
----
-
-## ▶️ Как запустить
+## How to run
 
 ```bash
 pip install catboost pandas
 python predict.py
 ```
 
-Модель `catboost_model.cbm` должна лежать рядом с `predict.py`. Пример визита зашит в скрипте. На выходе — `Предсказание (0/1): 0` или `1`.
-
----
-
-##  Что делала по шагам
-
-- почистила данные: убрала пустые/ненужные колонки, нашла скрытые пропуски (`(not set)` — это пропуск, записанный строкой), привела даты к нужному типу;
-- собрала целевую переменную из таблицы событий: визит = 1, если в нём было хоть одно целевое действие из глоссария;
-- провела EDA: распределения признаков, конверсия по устройствам и каналам;
-- сделала свою фичу `is_organic` (органика / платный трафик);
-- обучила и сравнила модели, разобрала важность признаков, упаковала модель в сервис.
-
+`catboost_model.cbm` must be in the same directory as `predict.py`. A sample session is hardcoded in the script. Output: `Prediction (0/1): 0` or `1`.
